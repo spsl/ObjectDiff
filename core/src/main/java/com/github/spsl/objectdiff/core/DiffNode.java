@@ -15,13 +15,13 @@ public class DiffNode {
 
     private Object targetValue;
 
-    private DiffState state;
+    private State state;
 
-    public DiffState getState() {
+    public State getState() {
         return state;
     }
 
-    public void setState(DiffState state) {
+    public void setState(State state) {
         this.state = state;
     }
 

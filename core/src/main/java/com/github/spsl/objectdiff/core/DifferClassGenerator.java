@@ -1,6 +1,7 @@
 package com.github.spsl.objectdiff.core;
 
-public interface DifferGenerator {
+public interface DifferClassGenerator {
 
     Differ generator(Class<?> clazz);
+
 }

@@ -1,6 +1,6 @@
 package com.github.spsl.objectdiff.core;
 
-public enum DiffState {
+public enum State {
     ADDED,
     CHANGED,
     DELETED

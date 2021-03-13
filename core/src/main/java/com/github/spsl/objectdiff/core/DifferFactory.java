@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DifferFactory {
 
     private static final DifferFactory INSTANCE = new DifferFactory();
+
     private DifferFactory() {
 
     }
@@ -16,10 +17,10 @@ public class DifferFactory {
 
     private static final Map<Class, Differ> map = new ConcurrentHashMap<>();
 
-    private final DifferGenerator differGenerator = new JavassistDifferGenerator();
+    private final DifferClassGenerator differClassGenerator = new JavassistDifferClassGenerator();
 
     public Differ getDiffer(Class<?> type) {
-        return differGenerator.generator(type);
+        return differClassGenerator.generator(type);
     }
 
 }

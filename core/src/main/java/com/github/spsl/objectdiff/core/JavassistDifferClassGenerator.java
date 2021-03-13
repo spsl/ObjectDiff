@@ -13,19 +13,19 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class JavassistDifferGenerator implements DifferGenerator{
+public class JavassistDifferClassGenerator implements DifferClassGenerator {
 
-    JavassistDifferGenerator() {
+    JavassistDifferClassGenerator() {
         System.out.println("");
     }
 
-    private final Map<Class<?>, BaseDiffer> cachedDifferMap = new ConcurrentHashMap<>();
+    private final Map<Class<?>, AbstractDiffer> cachedDifferMap = new ConcurrentHashMap<>();
 
     @Override
     public Differ generator(Class<?> clazz) {
         Set<Class<?>> dependTypeSet = new HashSet<>();
 
-        BaseDiffer differ = doGenerator(clazz, dependTypeSet);
+        AbstractDiffer differ = doGenerator(clazz, dependTypeSet);
         if (differ == null) {
             return new ObjectEqualsDiffer();
         }
@@ -42,10 +42,10 @@ public class JavassistDifferGenerator implements DifferGenerator{
         return differ;
     }
 
-    private synchronized BaseDiffer doGenerator(Class<?> clazz, Set<Class<?>> dependTypeSet) {
+    private synchronized AbstractDiffer doGenerator(Class<?> clazz, Set<Class<?>> dependTypeSet) {
 
         try {
-            BaseDiffer differ = cachedDifferMap.get(clazz);
+            AbstractDiffer differ = cachedDifferMap.get(clazz);
 
             if (differ != null) {
                 return differ;
@@ -63,7 +63,7 @@ public class JavassistDifferGenerator implements DifferGenerator{
 
             CtClass differClass = classPool.makeClass(name);
 
-            differClass.setSuperclass(classPool.getCtClass(BaseDiffer.class.getName()));
+            differClass.setSuperclass(classPool.getCtClass(AbstractDiffer.class.getName()));
             StringBuilder methodBuilder = new StringBuilder();
 
             methodBuilder.append(getMethodSign());
@@ -132,7 +132,7 @@ public class JavassistDifferGenerator implements DifferGenerator{
 
             Class<?> invokerClass = differClass.toClass();
 
-            BaseDiffer result = (BaseDiffer) invokerClass.getConstructor().newInstance();
+            AbstractDiffer result = (AbstractDiffer) invokerClass.getConstructor().newInstance();
 
             cachedDifferMap.putIfAbsent(clazz, result);
 
@@ -171,7 +171,7 @@ public class JavassistDifferGenerator implements DifferGenerator{
                     "       diffNode.setState(%s.%s);\n" +
                     "       return java.util.Optional.of(diffNode);\n" +
                     "   }\n";
-        return String.format(s, DiffState.class.getName(), DiffState.ADDED.name(),  DiffState.class.getName(), DiffState.DELETED.name());
+        return String.format(s, State.class.getName(), State.ADDED.name(),  State.class.getName(), State.DELETED.name());
     }
 
     private String getResultCheck() {
@@ -182,7 +182,7 @@ public class JavassistDifferGenerator implements DifferGenerator{
                     "   diffNode.setChildNodes(childNodeList);\n" +
                     "   return java.util.Optional.of(diffNode);\n";
 
-        return String.format(s, DiffState.class.getName(), DiffState.CHANGED.name());
+        return String.format(s, State.class.getName(), State.CHANGED.name());
     }
 
     private boolean isPrimitiveType(Class<?> type) {
