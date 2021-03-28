@@ -66,13 +66,17 @@ public class JavassistDifferClassGenerator implements DifferClassGenerator {
 
                 Class<?> fieldType = field.getType();
                 if (isPrimitiveType(fieldType)) {
+                    methodBuilder.append(getCheckExclude(field.getName()));
                     methodBuilder.append(getPrimitiveDiff(field.getName(), getterMethodName));
                     methodBuilder.append(getCheckOptional());
                     methodBuilder.append("\n");
+                    methodBuilder.append("}\n");
                 } else if (fieldType.isArray()) {
+                    methodBuilder.append(getCheckExclude(field.getName()));
                     methodBuilder.append(getArrayDiff(field.getName(), getterMethodName));
                     methodBuilder.append(getCheckOptional());
                     methodBuilder.append("\n");
+                    methodBuilder.append("}\n");
                 } else if (isMapType(fieldType)) {
                     Type type = field.getGenericType();
                     String valueTypeName = Object.class.getName();
@@ -82,27 +86,37 @@ public class JavassistDifferClassGenerator implements DifferClassGenerator {
                         valueTypeName = valueType.getTypeName();
                         dependTypeSet.add(Class.forName(valueTypeName));
                     }
+                    methodBuilder.append(getCheckExclude(field.getName()));
                     methodBuilder.append(getMapDiff(valueTypeName, field.getName(), getterMethodName));
                     methodBuilder.append(getCheckOptional());
                     methodBuilder.append("\n");
+                    methodBuilder.append("}\n");
                 } else if (isSetType(fieldType)) {
+                    methodBuilder.append(getCheckExclude(field.getName()));
                     methodBuilder.append(getCollectionDiff(field.getName(), getterMethodName));
                     methodBuilder.append(getCheckOptional());
                     methodBuilder.append("\n");
+                    methodBuilder.append("}\n");
                 } else if (isListType(fieldType)) {
+                    methodBuilder.append(getCheckExclude(field.getName()));
                     methodBuilder.append(getListDiff(field.getName(), getterMethodName));
                     methodBuilder.append(getCheckOptional());
                     methodBuilder.append("\n");
+                    methodBuilder.append("}\n");
                 } else if (isCollectionType(fieldType)) {
+                    methodBuilder.append(getCheckExclude(field.getName()));
                     methodBuilder.append(getCollectionDiff(field.getName(), getterMethodName));
                     methodBuilder.append(getCheckOptional());
                     methodBuilder.append("\n");
+                    methodBuilder.append("}\n");
                 } else {
                     // customType
                     // 还需要处理生成的类
+                    methodBuilder.append(getCheckExclude(field.getName()));
                     methodBuilder.append(getCustomTypeDiff(field.getType().getName(), field.getName(), getterMethodName));
                     methodBuilder.append(getCheckOptional());
                     methodBuilder.append("\n");
+                    methodBuilder.append("}\n");
                     dependTypeSet.add(field.getType());
                 }
             }
@@ -181,6 +195,10 @@ public class JavassistDifferClassGenerator implements DifferClassGenerator {
         return s;
     }
 
+    private String getCheckExclude(String propertyName) {
+        String t = "    if (!exclude(parent, \"%s\")) {";
+        return String.format(t, propertyName);
+    }
     private String getPrimitiveDiff(String propertyName, String getterMethodName) {
         String s = "    optional = primitiveDiff(diffNode, \"%s\", origin.%s(), target.%s());\n";
         return String.format(s, propertyName, getterMethodName, getterMethodName);

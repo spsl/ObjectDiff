@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class AbstractDiffer implements Differ {
 
-    private static final ThreadLocal<Set<Tuple2<Object, Object>>> diffTracker = new ThreadLocal<>();
+    private static final ThreadLocal<Context> diffContext = new ThreadLocal<>();
 
     private final Map<String, AtomicReference<AbstractDiffer>> differMap = new ConcurrentHashMap<>();
 
@@ -14,12 +14,40 @@ public abstract class AbstractDiffer implements Differ {
         return differMap.containsKey(differTypeName);
     }
 
-
     protected boolean checkIsTracked(Object obj) {
         if (obj == null) {
             return false;
         }
-        return diffTracker.get().contains(obj);
+        return diffContext.get().getTracker().contains(obj);
+    }
+
+    @Override
+    public Optional<DiffNode> diff(Object from, Object to) {
+        return diff(from, to, null);
+    }
+    @Override
+    public Optional<DiffNode> diff(Object from, Object to, Filter filter) {
+        try {
+            diffContext.set(new Context());
+            return diff(null, "", from, to, filter);
+        } finally {
+            diffContext.remove();
+        }
+    }
+
+    protected Optional<DiffNode> diff(DiffNode parentNode, String propertyName, Object origin, Object target, Filter filter) {
+        if (Objects.equals(origin, target)) {
+            return Optional.empty();
+        }
+
+        if (filter != null && filter.excludeProperties() != null && !filter.excludeProperties().isEmpty()) {
+            diffContext.get().getExcludeProperties().addAll(filter.excludeProperties());
+        }
+        return doDiff(parentNode, propertyName, origin, target);
+    }
+
+    protected Set<String> excludeProperties() {
+        return diffContext.get().getExcludeProperties();
     }
 
     protected abstract Optional<DiffNode> doDiff(DiffNode parentNode, String propertyName, Object origin, Object target);
@@ -44,16 +72,6 @@ public abstract class AbstractDiffer implements Differ {
             return "/" + propertyName;
         }
         return parentNode.getFullPath() + "." + propertyName;
-    }
-
-    @Override
-    public Optional<DiffNode> diff(Object from, Object to) {
-        try {
-            diffTracker.set(new HashSet<>());
-            return doDiff(null, "", from, to);
-        } finally {
-            diffTracker.remove();
-        }
     }
 
     public void setDiffer(String differName, AtomicReference<AbstractDiffer> differReference) {
@@ -143,16 +161,23 @@ public abstract class AbstractDiffer implements Differ {
         return Optional.of(node);
     }
 
+    protected boolean exclude(DiffNode parentNode, String propertyName) {
+        if (parentNode != null) {
+            return false;
+        }
+        return diffContext.get().getExcludeProperties().contains(propertyName);
+    }
+
     protected Optional<DiffNode> customObjectDiff(String customTypeName, DiffNode parentNode, String propertyName, Object from, Object to) {
         AtomicReference<AbstractDiffer> differReference = differMap.get(customTypeName);
         if (Objects.isNull(differReference) || differReference.get() == null) {
             return immutableObjectDiff(parentNode, propertyName, from, to);
         }
         Tuple2<Object, Object> tuple2 = Tuple2.of(from, to);
-        if (diffTracker.get().contains(tuple2)) {
+        if (diffContext.get().getTracker().contains(tuple2)) {
             return Optional.empty();
         }
-        diffTracker.get().add(tuple2);
+        diffContext.get().getTracker().add(tuple2);
         return differReference.get().doDiff(parentNode, propertyName, from, to);
     }
 

@@ -1,14 +1,12 @@
 package com.github.spsl.objectdiff.example;
 
 
-import com.github.spsl.objectdiff.core.DiffNode;
-import com.github.spsl.objectdiff.core.Differ;
-import com.github.spsl.objectdiff.core.DifferFactory;
-import com.github.spsl.objectdiff.core.GeneratorDiffException;
+import com.github.spsl.objectdiff.core.*;
 import com.github.spsl.objectdiff.example.model.School;
 import com.github.spsl.objectdiff.example.model.Student;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 public class Main {
@@ -50,7 +48,12 @@ public class Main {
         Differ studentDiffer = DifferFactory.getInstance().getDiffer(Student.class);
 
 
-        Optional<DiffNode> diffNodeOptional = studentDiffer.diff(a, b);
+        Optional<DiffNode> diffNodeOptional = studentDiffer.diff(a, b, new Filter() {
+            @Override
+            public List<String> excludeProperties() {
+                return Arrays.asList("age");
+            }
+        });
 
 
         diffNodeOptional.ifPresent(System.out::println);

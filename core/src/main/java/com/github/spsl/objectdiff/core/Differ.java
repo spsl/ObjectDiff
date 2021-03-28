@@ -6,4 +6,6 @@ public interface Differ {
 
     Optional<DiffNode> diff(Object from, Object to);
 
+    Optional<DiffNode> diff(Object from, Object to, Filter filter);
+
 }
