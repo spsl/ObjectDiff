@@ -1,14 +1,12 @@
 package com.github.spsl.objectdiff.example.typecircular;
 
-import com.github.spsl.objectdiff.core.DiffNode;
-import com.github.spsl.objectdiff.core.Differ;
-import com.github.spsl.objectdiff.core.DifferFactory;
+import com.github.spsl.objectdiff.core.*;
 
 import java.util.Optional;
 
 public class Test {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws GeneratorDiffException {
 
         Foo foo1 = new Foo();
         foo1.setName("foo1");
@@ -30,10 +28,19 @@ public class Test {
         Differ studentDiffer = DifferFactory.getInstance().getDiffer(Foo.class);
 
 
-        Optional<DiffNode> diffNodeOptional = studentDiffer.diff(null, "", foo1, foo2);
+        Optional<DiffNode> diffNodeOptional = studentDiffer.diff(foo1, foo2);
 
 
-        diffNodeOptional.ifPresent(System.out::println);
+        diffNodeOptional.ifPresent(diffNode -> {
+            diffNode.visit(new Visitor() {
+                @Override
+                public void visit(String fullPath, DiffNode node) {
+                    String log = String.format("%s %s --> %s", fullPath, node.getOriginValue(), node.getTargetValue());
+                    System.out.println(log);
+                }
+            });
+
+        });
 
 
     }

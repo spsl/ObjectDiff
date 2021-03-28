@@ -4,6 +4,7 @@ package com.github.spsl.objectdiff.example;
 import com.github.spsl.objectdiff.core.DiffNode;
 import com.github.spsl.objectdiff.core.Differ;
 import com.github.spsl.objectdiff.core.DifferFactory;
+import com.github.spsl.objectdiff.core.GeneratorDiffException;
 import com.github.spsl.objectdiff.example.model.School;
 import com.github.spsl.objectdiff.example.model.Student;
 
@@ -12,7 +13,7 @@ import java.util.Optional;
 
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws GeneratorDiffException {
         Student a = new Student();
         a.setAge(1);
         a.setName("hello world");
@@ -38,8 +39,8 @@ public class Main {
         parentStudent.setAge(11);
 //        b.setParent(parentStudent);
 
-        a.setAaa(Arrays.asList("hello", "world"));
-        b.setAaa(Arrays.asList("hello", "wow", "hi"));
+        a.setList(Arrays.asList("hello", "world"));
+        b.setList(Arrays.asList("hello", "wow", "hi"));
 
         b.getSchoolMap().put("1", school1);
         b.getSchoolMap().put("3", new School());
@@ -49,7 +50,7 @@ public class Main {
         Differ studentDiffer = DifferFactory.getInstance().getDiffer(Student.class);
 
 
-        Optional<DiffNode> diffNodeOptional = studentDiffer.diff(null, "", a, b);
+        Optional<DiffNode> diffNodeOptional = studentDiffer.diff(a, b);
 
 
         diffNodeOptional.ifPresent(System.out::println);

@@ -4,6 +4,6 @@ import java.util.Optional;
 
 public interface Differ {
 
-    Optional<DiffNode> diff(DiffNode parentNode, String propertyName, Object origin, Object target);
+    Optional<DiffNode> diff(Object from, Object to);
 
 }

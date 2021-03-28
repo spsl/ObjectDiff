@@ -6,13 +6,43 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public abstract class AbstractDiffer implements Differ {
 
-    private final Map<String, AtomicReference<Differ>> differMap = new ConcurrentHashMap<>();
+    private final Map<String, AtomicReference<AbstractDiffer>> differMap = new ConcurrentHashMap<>();
 
     protected boolean existDiffer(String differTypeName) {
         return differMap.containsKey(differTypeName);
     }
 
-    public void setDiffer(String differName, AtomicReference<Differ> differReference) {
+    protected abstract Optional<DiffNode> doDiff(DiffNode parentNode, String propertyName, Object origin, Object target);
+
+
+    protected DiffNode initDiffNode(DiffNode parentNode, String propertyName, Object origin, Object target) {
+        DiffNode diffNode = new DiffNode();
+
+        diffNode.setParentNode(parentNode);
+        diffNode.setProperty(propertyName);
+        diffNode.setOriginValue(origin);
+        diffNode.setTargetValue(target);
+        if (parentNode == null) {
+            diffNode.setFullPath("");
+        } else {
+            diffNode.setFullPath(calculateFullPath(parentNode, propertyName));
+        }
+        return diffNode;
+    }
+
+    private String calculateFullPath(DiffNode parentNode, String propertyName) {
+        if (parentNode == null || parentNode.getFullPath() == null || parentNode.getFullPath().trim() == "") {
+            return "/" + propertyName;
+        }
+        return parentNode.getFullPath() + "." + propertyName;
+    }
+
+    @Override
+    public Optional<DiffNode> diff(Object from, Object to) {
+        return doDiff(null, "", from, to);
+    }
+
+    public void setDiffer(String differName, AtomicReference<AbstractDiffer> differReference) {
         differMap.put(differName, differReference);
     }
 
@@ -88,13 +118,7 @@ public abstract class AbstractDiffer implements Differ {
         if (Objects.equals(from,to)) {
             return Optional.empty();
         }
-
-        DiffNode node = new DiffNode();
-        node.setPath(propertyName);
-        node.setOriginValue(from);
-        node.setTargetValue(to);
-        node.setParentNode(parentNode);
-
+        DiffNode node = initDiffNode(parentNode, propertyName, from, to);
         if (from == null) {
             node.setState(State.ADDED);
         } else if (to == null) {
@@ -106,11 +130,11 @@ public abstract class AbstractDiffer implements Differ {
     }
 
     protected Optional<DiffNode> customObjectDiff(String customTypeName, DiffNode parentNode, String propertyName, Object a, Object to) {
-        AtomicReference<Differ> differReference = differMap.get(customTypeName);
+        AtomicReference<AbstractDiffer> differReference = differMap.get(customTypeName);
         if (Objects.isNull(differReference) || differReference.get() == null) {
             return immutableObjectDiff(parentNode, propertyName, a, to);
         }
-        return differReference.get().diff(parentNode, propertyName, a, to);
+        return differReference.get().doDiff(parentNode, propertyName, a, to);
     }
 
     protected Optional<DiffNode> listDiff(DiffNode parentNode, String propertyName, List<?> a, List<?> to) {
@@ -127,11 +151,7 @@ public abstract class AbstractDiffer implements Differ {
             return Optional.empty();
         }
 
-        DiffNode diffNode = new DiffNode();
-        diffNode.setParentNode(parentNode);
-        diffNode.setPath(propertyName);
-        diffNode.setOriginValue(from);
-        diffNode.setTargetValue(to);
+        DiffNode diffNode = initDiffNode(parentNode, propertyName, from, to);
 
         if (from == null) {
             diffNode.setState(State.ADDED);
@@ -169,11 +189,7 @@ public abstract class AbstractDiffer implements Differ {
             return Optional.empty();
         }
 
-        DiffNode diffNode = new DiffNode();
-        diffNode.setParentNode(parentNode);
-        diffNode.setPath(propertyName);
-        diffNode.setOriginValue(from);
-        diffNode.setTargetValue(to);
+        DiffNode diffNode = initDiffNode(parentNode, propertyName, from, to);
 
         if (from == null) {
             diffNode.setState(State.ADDED);
@@ -191,13 +207,13 @@ public abstract class AbstractDiffer implements Differ {
         to.forEach(item -> {
             if (!from.contains(item)) {
 
-                immutableObjectDiff(diffNode, "", null, item)
+                immutableObjectDiff(diffNode, "item", null, item)
                         .ifPresent(childChangedList::add);
             }
         });
         from.forEach(item -> {
             if (!to.contains(item)) {
-                immutableObjectDiff(diffNode, "", item, null)
+                immutableObjectDiff(diffNode, "item", item, null)
                         .ifPresent(childChangedList::add);
             }
         });

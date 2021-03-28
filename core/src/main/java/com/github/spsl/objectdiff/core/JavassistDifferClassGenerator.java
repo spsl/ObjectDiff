@@ -11,59 +11,41 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class JavassistDifferClassGenerator implements DifferClassGenerator {
 
     JavassistDifferClassGenerator() {
-        System.out.println("");
     }
 
-    private final Map<Class<?>, AbstractDiffer> cachedDifferMap = new ConcurrentHashMap<>();
+    private final Map<Class<?>, DifferClassWrapper> cachedClassMap = new ConcurrentHashMap<>();
 
     @Override
-    public Differ generator(Class<?> clazz) {
-        Set<Class<?>> dependTypeSet = new HashSet<>();
-
-        AbstractDiffer differ = doGenerator(clazz, dependTypeSet);
-        if (differ == null) {
-            return new ObjectEqualsDiffer();
+    public DifferClassWrapper generator(Class<?> clazz) {
+        DifferClassWrapper wrapper = doGenerator(clazz);
+        if (wrapper == null) {
+            wrapper = new DifferClassWrapper();
+            wrapper.setDependClasses(Collections.emptySet());
+            wrapper.setDifferClass(ObjectEqualsDiffer.class);
         }
-        if (!dependTypeSet.isEmpty()) {
-            dependTypeSet.forEach(type -> {
-                if (!differ.existDiffer(type.getName())) {
-                    AtomicReference<Differ> reference = new AtomicReference<>();
-                    differ.setDiffer(type.getName(), reference);
-                    Differ dependDiffer = DifferFactory.getInstance().getDiffer(type);
-                    reference.set(dependDiffer);
-                }
-            });
-        }
-        return differ;
+        return wrapper;
     }
 
-    private synchronized AbstractDiffer doGenerator(Class<?> clazz, Set<Class<?>> dependTypeSet) {
+    private synchronized DifferClassWrapper doGenerator(Class<?> clazz) {
 
         try {
-            AbstractDiffer differ = cachedDifferMap.get(clazz);
+            DifferClassWrapper wrapper = cachedClassMap.get(clazz);
 
-            if (differ != null) {
-                return differ;
-            }
-
-            differ = cachedDifferMap.get(clazz);
-            if (differ != null) {
-                return differ;
+            if (wrapper != null) {
+                return wrapper;
             }
 
             ClassPool classPool = ClassPool.getDefault();
             String clazzName = clazz.getName();
-            String name = clazz.getSimpleName() + "$differ";
+            String name = clazz.getSimpleName() + "$Differ";
 
+            CtClass differCtClass = classPool.makeClass(name);
 
-            CtClass differClass = classPool.makeClass(name);
-
-            differClass.setSuperclass(classPool.getCtClass(AbstractDiffer.class.getName()));
+            differCtClass.setSuperclass(classPool.getCtClass(AbstractDiffer.class.getName()));
             StringBuilder methodBuilder = new StringBuilder();
 
             methodBuilder.append(getMethodSign());
@@ -76,6 +58,7 @@ public class JavassistDifferClassGenerator implements DifferClassGenerator {
             methodBuilder.append("  java.util.Optional optional = java.util.Optional.empty();\n");
 
             Field[] fields = clazz.getDeclaredFields();
+            Set<Class<?>> dependTypeSet = new HashSet<>();
             for (Field field : fields) {
                 // 判断field类型
                 PropertyDescriptor propertyDescriptor = new PropertyDescriptor(field.getName(), clazz);
@@ -127,25 +110,27 @@ public class JavassistDifferClassGenerator implements DifferClassGenerator {
             methodBuilder.append("}\n");
 
 
-            CtMethod m = CtNewMethod.make(methodBuilder.toString(), differClass);
-            differClass.addMethod(m);
+            CtMethod m = CtNewMethod.make(methodBuilder.toString(), differCtClass);
+            differCtClass.addMethod(m);
 
-            Class<?> invokerClass = differClass.toClass();
+            Class<?> differClass = differCtClass.toClass();
 
-            AbstractDiffer result = (AbstractDiffer) invokerClass.getConstructor().newInstance();
+            wrapper = new DifferClassWrapper();
+            wrapper.setDifferClass(differClass);
+            wrapper.setDependClasses(dependTypeSet);
+            cachedClassMap.put(clazz, wrapper);
 
-            cachedDifferMap.putIfAbsent(clazz, result);
-
-            return cachedDifferMap.get(clazz);
+            return wrapper;
         } catch (Exception e) {
             e.printStackTrace();
         }
+
         return null;
     }
 
 
     private String getMethodSign() {
-        return String.format("public java.util.Optional diff(%s parent, java.lang.String propertyName, java.lang.Object from, java.lang.Object to) {\n", DiffNode.class.getName());
+        return String.format("protected java.util.Optional doDiff(%s parent, java.lang.String propertyName, java.lang.Object from, java.lang.Object to) {\n", DiffNode.class.getName());
     }
 
     private String getIfEqual() {
@@ -155,11 +140,11 @@ public class JavassistDifferClassGenerator implements DifferClassGenerator {
     }
 
     private String getDiffNodeInit() {
-        String s =  "    %s diffNode = new %s();\n" +
-                    "    diffNode.setOriginValue(origin);\n" +
-                    "    diffNode.setTargetValue(target);\n" +
-                    "    diffNode.setParentNode(parent);\n" +
-                    "    diffNode.setPath(propertyName);\n";
+        String s =  "    %s diffNode = initDiffNode(parent, propertyName, origin, target);\n";
+//                    "    diffNode.setOriginValue(origin);\n" +
+//                    "    diffNode.setTargetValue(target);\n" +
+//                    "    diffNode.setParentNode(parent);\n" +
+//                    "    diffNode.setProperty(propertyName);\n";
         return String.format(s, DiffNode.class.getName(), DiffNode.class.getName());
     }
 

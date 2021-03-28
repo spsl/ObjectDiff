@@ -21,6 +21,7 @@
             <groupId>com.github.spsl</groupId>
             <artifactId>object-diff-core</artifactId>
         </dependency>
+
     </dependencies>
 
 </project>

@@ -12,7 +12,7 @@ public class Student {
 
     private School school;
 
-    private List<String> aaa;
+    private List<String> list;
 
     Map<String, School> schoolMap = new HashMap<>();
 
@@ -24,12 +24,12 @@ public class Student {
         this.schoolMap = schoolMap;
     }
 
-    public List<String> getAaa() {
-        return aaa;
+    public List<String> getList() {
+        return list;
     }
 
-    public void setAaa(List<String> aaa) {
-        this.aaa = aaa;
+    public void setList(List<String> list) {
+        this.list = list;
     }
 
     public int getAge() {
